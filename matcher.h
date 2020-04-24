@@ -10,6 +10,9 @@ typedef struct Matcher {
     int nc_count;
     int nc_size;
     const char* nc_data;
+    int nc_len;
+    const char** nc_arr;
+    int* nc_subs;
 } Matcher;
 
 Matcher* matcher_build(void);
