@@ -3,11 +3,11 @@ first: all
 %.o: %.c
 	cc -c -Wall -Wextra -g -o $@ $^
 
-gonzo: matcher.o gonzo.o
+main: matcher.o main.o
 	cc -g -o $@ $^ -lpcre
 
-all: gonzo
+all: main
 
 clean:
 	rm -f *.o
-	rm -f gonzo
+	rm -f main
