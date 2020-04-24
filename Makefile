@@ -1,9 +1,7 @@
 first: all
 
 %.o: %.c
-	cc -c -g -o $@ $^
-
-matcher.o: matcher.c
+	cc -c -Wall -Wextra -g -o $@ $^
 
 gonzo: matcher.o gonzo.o
 	cc -g -o $@ $^ -lpcre
