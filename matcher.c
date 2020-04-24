@@ -102,6 +102,7 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
     }
     memset(matcher->nc_subs, 0, 2 * matcher->nc_len * sizeof(int));
     int rc = pcre_exec(matcher->code, matcher->extra, str, len, start, options, matcher->nc_subs, 2 * matcher->nc_len);
+    // TODO: deal with these error codes
     if (rc < 0) {
         switch (rc) {
             case PCRE_ERROR_NOMATCH      : printf("String did not match pattern\n");   break;
@@ -121,6 +122,7 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
         printf("Too many substrings were found to fit, adjusted to %d\n", rc);
     }
 
+    // TODO: expose a way to allow the caller to deal with the matches / captures
     const char *match;
     for (int j = 0; j < rc; j++) {
         int f = matcher->nc_subs[2*j+0];

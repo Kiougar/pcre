@@ -1,6 +1,14 @@
 #ifndef MATCHER_H_
 #define MATCHER_H_
 
+/*
+ * An object that knows how to match a string agains a regular expression.
+ * Uses PCRE for the heavy lifting.
+ * Handles named captures properly.
+ *
+ * TODO: create return codes that abstract PCRE
+ */
+
 #include <pcre.h>
 
 typedef struct Matcher {
