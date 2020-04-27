@@ -42,9 +42,15 @@ int matcher_set_pattern(Matcher* matcher, const char* pattern) {
 
         int rc = 0;
 
+        rc = pcre_fullinfo(matcher->code, matcher->extra, PCRE_INFO_CAPTURECOUNT, &matcher->ca_count);
+        if (rc != 0) {
+            printf("ERROR: could not get info capture count for '%s': %d\n", pattern, rc);
+            break;
+        }
+
         rc = pcre_fullinfo(matcher->code, matcher->extra, PCRE_INFO_NAMECOUNT, &matcher->nc_count);
         if (rc != 0) {
-            printf("ERROR: could not get info count for '%s': %d\n", pattern, rc);
+            printf("ERROR: could not get info name count for '%s': %d\n", pattern, rc);
             break;
         }
 
@@ -60,17 +66,47 @@ int matcher_set_pattern(Matcher* matcher, const char* pattern) {
             break;
         }
 
-        matcher->nc_len = 99; // TODO: get this value from somewhere else
-        matcher->nc_arr = (const char**) calloc(matcher->nc_len, sizeof(char*));
-        matcher->nc_subs = (int*) calloc(2 * matcher->nc_len, sizeof(int));
+        /*
+            The ov_len is set as 3 * (capture_count + 1) because
+            the structure of the output vector looks like this:
+
+                [pairs of offsets]                    = 2 * (full match + capture)
+                [empty "divider" element]             = 1
+                [starting positions in reverse order] = capture
+                ---------------------------------------------------------
+                Total size                            = 3 * (capture + 1)
+
+            For example, for a patern that has 4 captures in total,
+            the vector will look like this:
+
+                0,18,0,10,11,18,-1,-1,-1,-1,0,-1,-1,11,0
+            
+            where:
+                *  0,18 is the full match offsets
+                *  0,10 is the 1st capture offsets
+                * 11,18 is the 2nd capture offsets
+                * -1,-1 is the 3rd capture offsets
+                * -1,-1 is the 4th capture offsets
+                *  0 is the "divider" (this is never touched)
+                * -1 is the 4th capture starting offset
+                * -1 is the 3rd capture starting offset
+                * 11 is the 2nd capture starting offset
+                *  0 is the 1st capture starting offset
+        */
+        matcher->ov_len = 3 * (matcher->ca_count + 1);
+
+        // allocate memory for named array and output vector
+        matcher->nc_arr = (const char**) calloc(matcher->nc_count, sizeof(char*));
+        matcher->ov_subs = (int*) calloc(matcher->ov_len, sizeof(int));
 
         int ok = 1;
         for (int j = 0; j < matcher->nc_count; ++j) {
             const char* p = matcher->nc_data + j * matcher->nc_size;
-            int pos = (p[0] << 8) | p[1];
-            if (pos >= matcher->nc_len) {
+            // offset position by one to fit in the array
+            int pos = ((p[0] << 8) | p[1]) - 1;
+            if (pos > matcher->nc_count) {
                 printf("ERROR: named capture #%d is outside range 0-%d for pattern '%s'\n",
-                       pos, matcher->nc_len, pattern);
+                       pos, matcher->nc_count, pattern);
                 ok = 0;
                 break;
             }
@@ -94,14 +130,14 @@ void matcher_destroy(Matcher* matcher) {
     free((void*) matcher);
 }
 
-int matcher_match(Matcher* matcher, const char* str, int len) {
+int matcher_match(Matcher* matcher, const char* str) {
     int start = 0;
     int options = 0;
-    if (len <= 0) {
-        len = strlen(str);
-    }
-    memset(matcher->nc_subs, 0, 2 * matcher->nc_len * sizeof(int));
-    int rc = pcre_exec(matcher->code, matcher->extra, str, len, start, options, matcher->nc_subs, 2 * matcher->nc_len);
+    int len = strlen(str);
+
+    // FIXME: probably this is not needed since we have a fixed size per pattern
+    memset(matcher->ov_subs, 0, matcher->ov_len * sizeof(int));
+    int rc = pcre_exec(matcher->code, matcher->extra, str, len, start, options, matcher->ov_subs, matcher->ov_len);
     // TODO: deal with these error codes
     if (rc < 0) {
         switch (rc) {
@@ -115,27 +151,22 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
         }
         return 1;
     }
-    if (rc == 0) {
-        // yes, this is recommended in the man page
-        // but it should never happen because we resized subs according to the pattern
-        rc = 2 * matcher->nc_len / 3;
-        printf("Too many substrings were found to fit, adjusted to %d\n", rc);
-    }
 
     // TODO: expose a way to allow the caller to deal with the matches / captures
+    // we can use https://www.pcre.org/original/doc/html/pcre_get_named_substring.html
     const char *match;
     for (int j = 0; j < rc; j++) {
-        int f = matcher->nc_subs[2*j+0];
-        int t = matcher->nc_subs[2*j+1];
+        int f = matcher->ov_subs[2*j+0];
+        int t = matcher->ov_subs[2*j+1];
         if (f < 0 || t < 0) {
             continue;
         }
 
         const char* nc_name = j == 0 ? "*FULL*" : "*NONE*";
-        if (j < matcher->nc_len && matcher->nc_arr[j]) {
-            nc_name = matcher->nc_arr[j];
+        if (j > 0 && j - 1 < matcher->nc_count && matcher->nc_arr[j-1]) {
+            nc_name = matcher->nc_arr[j-1];
         }
-        pcre_get_substring(str, matcher->nc_subs, rc, j, &match);
+        pcre_get_substring(str, matcher->ov_subs, rc, j, &match);
         printf("Match(%2d): (%2d,%2d): '%s' [%s]\n", j, f, t, match, nc_name);
         pcre_free_substring(match);
     }
@@ -159,10 +190,10 @@ static void matcher_cleanup(Matcher* matcher) {
         free((void*) matcher->nc_arr);
         matcher->nc_arr = 0;
     }
-    if (matcher->nc_subs) {
-        free((void*) matcher->nc_subs);
-        matcher->nc_subs = 0;
+    if (matcher->ov_subs) {
+        free((void*) matcher->ov_subs);
+        matcher->ov_subs = 0;
     }
-    matcher->nc_count = matcher->nc_size = matcher->nc_len = 0;
+    matcher->ca_count = matcher->nc_count = matcher->nc_size = matcher->ov_len = 0;
     matcher->nc_data = 0;
 }
