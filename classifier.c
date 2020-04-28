@@ -6,7 +6,7 @@
 #include "classifier.h"
 
 static void classifier_cleanup(Classifier* classifier);
-static int scrub(const char* str, int slen, char* buf, int blen);
+static int scrub(const char* str, int slen, char* buf, int bmax);
 
 Classifier* classifier_build(void) {
     Classifier* classifier = (Classifier*) malloc(sizeof(Classifier));
@@ -105,7 +105,7 @@ const char* classifier_match(Classifier* classifier, const char* str, int len) {
         return 0;
     }
     char tmp[1024];
-    scrub(str, len, tmp, 1024);
+    len = scrub(str, len, tmp, 1024);
 
     for (int j = 0; j < classifier->next; ++j) {
         int rc = matcher_match(classifier->matcher[j], tmp, len);
@@ -137,37 +137,100 @@ static void classifier_cleanup(Classifier* classifier) {
     classifier->size = classifier->next = 0;
 }
 
-static int scrub(const char* str, int slen, char* buf, int blen) {
+static int scrub(const char* str, int slen, char* buf, int bmax) {
+    (void) bmax;
     if (slen <= 0) {
         slen = strlen(str);
     }
-    int len = slen;
-    memcpy(buf, str, len);
-    buf[len] = '\0';
     // s/\%([[:xdigit:]][[:xdigit:]])/chr(hex($1))/ge;
-    // NEXT s/(;)? ([ ])? WUID=$HEX; ([ ])? WTB=$digits(;)?//xg;
-    // s/[ ]APCPMS=\^[^\^]+\^;//xg;
+    // DONE s/(;)? ([ ])? WUID=$HEX; ([ ])? WTB=$digits(;)?//xg;
+    // DONE s/[ ]APCPMS=\^[^\^]+\^;//xg;
     // DONE s/;;+/;/g;
     // DONE s|&#47;|/|g;
-    static struct {
-        const char* from;
-        const char* to;
-    } scrub[] = {
-        { "&#47;", "/" },
-        { ";;", ";" },
-    };
-    for (unsigned j = 0; j < sizeof(scrub) / sizeof(scrub[0]); ++j) {
-        int f = strlen(scrub[j].from);
-        int t = strlen(scrub[j].to);
-        while (1) {
-            char* p = memmem(buf, len, scrub[j].from, f);
-            if (!p) {
+    int show = 0;
+    int len = 0;
+    for (int k = 0; k < slen; ) {
+        int found = 0;
+        switch (str[k]) {
+            case '&':
+                if (memcmp(str + k, "&#47;", 5) == 0) {
+                    memcpy(buf + len, "/", 1);
+                    len += 1;
+                    k += 5;
+                    found = 1;
+                }
                 break;
-            }
-            memcpy(p, scrub[j].to, t);
-            memcpy(p + t, p + f, len - f);
-            len -= f - t;
+
+            case ';':
+                if (memcmp(str + k, ";;", 2) == 0) {
+                    // we "fake" it: move one character ahead, don't write
+                    // anything to the buffer and hope to catch any real
+                    // pattern starting with ';' on the next interation
+                    k += 1;
+                    found = 1;
+                }
+                if (memcmp(str + k, "; WUID=", 7) == 0) {
+                    int match = 0;
+                    int l = 0;
+                    for (l = k + 7; l < slen; ++l) {
+                        int valid = isxdigit(str[l]);
+                        if (!valid) {
+                            match = 1;
+                            --l; // backtrack one character
+                            break;
+                        }
+                    }
+                    if (match) {
+                        k = l + 1;
+                        found = 1;
+                        show = 1;
+                    }
+                }
+                if (memcmp(str + k, "; WTB=", 6) == 0) {
+                    int match = 0;
+                    int l = 0;
+                    for (l = k + 6; l < slen; ++l) {
+                        int valid = isdigit(str[l]);
+                        if (!valid) {
+                            match = 1;
+                            --l; // backtrack one character
+                            break;
+                        }
+                    }
+                    if (match) {
+                        k = l + 1;
+                        found = 1;
+                        show = 1;
+                    }
+                }
+                if (memcmp(str + k, "; APCPMS=^", 10) == 0) {
+                    int match = 0;
+                    int l = 0;
+                    for (l = k + 10; l < slen; ++l) {
+                        int valid = str[l] != '^';
+                        if (!valid) {
+                            match = 1;
+                            break;
+                        }
+                    }
+                    if (match) {
+                        k = l + 1;
+                        found = 1;
+                        show = 1;
+                    }
+                }
+                break;
+
+            default:
+                break;
         }
+        if (!found) {
+            buf[len++] = str[k++];
+        }
+    }
+    buf[len] = '\0';
+    if (show) {
+        fprintf(stderr, "SCRUBBED\n%s%s", str, buf);
     }
     return len;
 }
