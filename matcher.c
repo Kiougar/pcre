@@ -27,7 +27,7 @@ int matcher_set_pattern(Matcher* matcher, const char* pattern) {
         int offset = 0;
         const unsigned char *tableptr = 0;
 
-        options = PCRE_DUPNAMES;
+        options = PCRE_DUPNAMES | PCRE_EXTENDED;
         matcher->code = pcre_compile(pattern, options, &error, &offset, tableptr);
         if (!matcher->code) {
             printf("ERROR: could not compile '%s': %s\n", pattern, error);
@@ -90,7 +90,7 @@ int matcher_set_pattern(Matcher* matcher, const char* pattern) {
             the vector will look like this:
 
                 0,18,0,10,11,18,-1,-1,-1,-1,0,-1,-1,11,0
-            
+
             where:
                 *  0,18 is the full match offsets
                 *  0,10 is the 1st capture offsets
@@ -153,7 +153,7 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
     // TODO: deal with these error codes
     if (rc < 0) {
         switch (rc) {
-            case PCRE_ERROR_NOMATCH      : printf("String did not match pattern\n");   break;
+            case PCRE_ERROR_NOMATCH      : break;
             case PCRE_ERROR_NULL         : printf("Something was null\n");             break;
             case PCRE_ERROR_BADOPTION    : printf("A bad option was passed\n");        break;
             case PCRE_ERROR_BADMAGIC     : printf("Magic number bad (re corrupt?)\n"); break;
@@ -169,6 +169,8 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
     // we are asserting to make sure we were indeed correct on the sizing
     // and within expected bounds of captures (substrings plus full match)
     assert(rc > 0 && rc <= matcher->ca_count + 1);
+
+    return 0;
 
     // TODO: expose a way to allow the caller to deal with the matches / captures
     // we can use https://www.pcre.org/original/doc/html/pcre_get_named_substring.html

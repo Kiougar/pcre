@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include "matcher.h"
+#include "classifier.h"
 
-int main(int argc, char *argv[]) {
-    (void) argc;
-    (void) argv;
+static void test_pcre(void) {
     const char* tests[] = {
         "Windows NT 11-40.g",
         "Windows 98-deprecated",
@@ -37,5 +36,32 @@ int main(int argc, char *argv[]) {
     } while(0);
 
     matcher_destroy(matcher);
+}
+
+static void test_file(void) {
+    Classifier* classifier = classifier_build();
+    classifier_add_patterns_from_file(classifier, "./patterns.dat");
+    // FILE* fp = fopen("./ua_small.txt", "r");
+    FILE* fp = fopen("./ua_20200424.txt", "r");
+    while (1) {
+        char buf[1024];
+        if (!fgets(buf, 1024, fp)) {
+            break;
+        }
+#if 1
+        const char* match = classifier_match(classifier, buf, 0);
+        printf("%s=> [%s]\n", buf, match ? match : "UNDEF");
+#endif
+    }
+    fclose(fp);
+    classifier_destroy(classifier);
+}
+
+int main(int argc, char *argv[]) {
+    (void) argc;
+    (void) argv;
+
+    // test_pcre();
+    test_file();
     return 0;
 }
