@@ -55,6 +55,15 @@ int matcher_set_pattern(Matcher* matcher, const char* pattern) {
             break;
         }
 
+        // make sure no unnamed captures were used
+        if (matcher->ca_count != matcher->nc_count) {
+            printf("ERROR: %d unnamed capture(s) found in pattern '%s'\n", matcher->ca_count - matcher->nc_count, pattern);
+            printf("       consider replacing them with:\n");
+            printf("         * named groups          (?<my_name>...)\n");
+            printf("         * non capturing groups  (?:...)\n");
+            break;
+        }
+
         rc = pcre_fullinfo(matcher->code, matcher->extra, PCRE_INFO_NAMEENTRYSIZE, &matcher->nc_size);
         if (rc != 0) {
             printf("ERROR: could not get info size for '%s': %d\n", pattern, rc);
