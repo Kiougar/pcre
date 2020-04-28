@@ -2,6 +2,8 @@
 #include "matcher.h"
 #include "classifier.h"
 
+// #define TEST_BASIC_PCRE 1
+
 #define PATTERNS_FILE "./patterns.dat"
 
 #define DEFAULT_USER_AGENTS_FILE "./ua_20200424.txt"
@@ -55,6 +57,7 @@ static void test_file(const char* file_name) {
     int count = classifier_add_patterns_from_file(classifier, PATTERNS_FILE);
     fprintf(stderr, "Added %d patterns from file [%s]\n", count, PATTERNS_FILE);
 
+    count = 0;
     while (1) {
         char buf[1024];
         if (!fgets(buf, 1024, fp)) {
@@ -62,14 +65,18 @@ static void test_file(const char* file_name) {
         }
         const char* match = classifier_match(classifier, buf, 0);
         printf("%s=> [%s]\n", buf, match ? match : "UNDEF");
+        ++count;
     }
     fclose(fp);
+    fprintf(stderr, "Matched %d strings from file [%s]\n", count, file_name);
 
     classifier_destroy(classifier);
 }
 
 int main(int argc, char *argv[]) {
 #if defined(TEST_BASIC_PCRE)
+    (void) argc;
+    (void) argv;
     test_pcre();
 #endif
 

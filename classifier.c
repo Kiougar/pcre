@@ -183,7 +183,6 @@ static int scrub(const char* str, int slen, char* buf, int bmax) {
                     if (match) {
                         k = l + 1;
                         found = 1;
-                        show = 1;
                     }
                 }
                 if (memcmp(str + k, "; WTB=", 6) == 0) {
@@ -200,7 +199,6 @@ static int scrub(const char* str, int slen, char* buf, int bmax) {
                     if (match) {
                         k = l + 1;
                         found = 1;
-                        show = 1;
                     }
                 }
                 if (memcmp(str + k, "; APCPMS=^", 10) == 0) {
@@ -216,7 +214,6 @@ static int scrub(const char* str, int slen, char* buf, int bmax) {
                     if (match) {
                         k = l + 1;
                         found = 1;
-                        show = 1;
                     }
                 }
                 break;
