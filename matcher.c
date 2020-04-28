@@ -130,10 +130,12 @@ void matcher_destroy(Matcher* matcher) {
     free((void*) matcher);
 }
 
-int matcher_match(Matcher* matcher, const char* str) {
+int matcher_match(Matcher* matcher, const char* str, int len) {
     int start = 0;
     int options = 0;
-    int len = strlen(str);
+    if (len <= 0) {
+        len = strlen(str);
+    }
 
     // FIXME: probably this is not needed since we have a fixed size per pattern
     memset(matcher->ov_subs, 0, matcher->ov_len * sizeof(int));

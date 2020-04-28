@@ -27,6 +27,6 @@ typedef struct Matcher {
 Matcher* matcher_build(void);
 void matcher_destroy(Matcher* matcher);
 int matcher_set_pattern(Matcher* matcher, const char* pattern);
-int matcher_match(Matcher* matcher, const char* str);
+int matcher_match(Matcher* matcher, const char* str, int len);
 
 #endif

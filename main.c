@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
             printf("        %s\n", "0123456789012345678901234567890123456789");
             printf("        %s\n", "0         1         2         3");
 
-            rc = matcher_match(matcher, test);
+            rc = matcher_match(matcher, test, 0);
             if (rc != 0) {
                 printf("ERROR: could not match string '%s' for matcher %p\n", test, matcher);
             }
