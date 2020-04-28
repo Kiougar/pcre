@@ -2,6 +2,11 @@
 #include "matcher.h"
 #include "classifier.h"
 
+#define PATTERNS_FILE "./patterns.dat"
+
+#define DEFAULT_USER_AGENTS_FILE "./ua_20200424.txt"
+
+#if defined(TEST_BASIC_PCRE)
 static void test_pcre(void) {
     const char* tests[] = {
         "Windows NT 11-40.g",
@@ -37,31 +42,43 @@ static void test_pcre(void) {
 
     matcher_destroy(matcher);
 }
+#endif
 
-static void test_file(void) {
+static void test_file(const char* file_name) {
+    FILE* fp = fopen(file_name, "r");
+    if (fp == 0) {
+        fprintf(stderr, "Cannot read file [%s]\n", file_name);
+        return;
+    }
+
     Classifier* classifier = classifier_build();
-    classifier_add_patterns_from_file(classifier, "./patterns.dat");
-    // FILE* fp = fopen("./ua_small.txt", "r");
-    FILE* fp = fopen("./ua_20200424.txt", "r");
+    int count = classifier_add_patterns_from_file(classifier, PATTERNS_FILE);
+    fprintf(stderr, "Added %d patterns from file [%s]\n", count, PATTERNS_FILE);
+
     while (1) {
         char buf[1024];
         if (!fgets(buf, 1024, fp)) {
             break;
         }
-#if 1
         const char* match = classifier_match(classifier, buf, 0);
         printf("%s=> [%s]\n", buf, match ? match : "UNDEF");
-#endif
     }
     fclose(fp);
+
     classifier_destroy(classifier);
 }
 
 int main(int argc, char *argv[]) {
-    (void) argc;
-    (void) argv;
+#if defined(TEST_BASIC_PCRE)
+    test_pcre();
+#endif
 
-    // test_pcre();
-    test_file();
+    if (argc <= 1) {
+        test_file(DEFAULT_USER_AGENTS_FILE);
+    } else {
+        for (int j = 1; j < argc; ++j) {
+            test_file(argv[j]);
+        }
+    }
     return 0;
 }

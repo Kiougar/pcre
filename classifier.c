@@ -142,7 +142,7 @@ static int scrub(const char* str, int slen, char* buf, int bmax) {
     if (slen <= 0) {
         slen = strlen(str);
     }
-    // s/\%([[:xdigit:]][[:xdigit:]])/chr(hex($1))/ge;
+    // TODO s/\%([[:xdigit:]][[:xdigit:]])/chr(hex($1))/ge;
     // DONE s/(;)? ([ ])? WUID=$HEX; ([ ])? WTB=$digits(;)?//xg;
     // DONE s/[ ]APCPMS=\^[^\^]+\^;//xg;
     // DONE s/;;+/;/g;
