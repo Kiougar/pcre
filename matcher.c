@@ -97,17 +97,17 @@ int matcher_set_pattern(Matcher* matcher, const char* pattern) {
         matcher->ov_len = 3 * (matcher->ca_count + 1);
 
         // allocate memory for named array and output vector
-        matcher->nc_arr = (const char**) calloc(matcher->nc_count, sizeof(char*));
+        matcher->nc_arr = (const char**) calloc(matcher->ca_count + 1, sizeof(char*));
         matcher->ov_subs = (int*) calloc(matcher->ov_len, sizeof(int));
 
         int ok = 1;
         for (int j = 0; j < matcher->nc_count; ++j) {
             const char* p = matcher->nc_data + j * matcher->nc_size;
             // offset position by one to fit in the array
-            int pos = ((p[0] << 8) | p[1]) - 1;
-            if (pos > matcher->nc_count) {
+            int pos = (p[0] << 8) | p[1];
+            if (pos > matcher->ca_count) {
                 printf("ERROR: named capture #%d is outside range 0-%d for pattern '%s'\n",
-                       pos, matcher->nc_count, pattern);
+                       pos, matcher->ca_count, pattern);
                 ok = 0;
                 break;
             }
@@ -158,7 +158,8 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
     // No need to check for rc == 0 and adjust (as recommended in the man page)
     // because we have already made sure that the output vector can fit all matches
     // we are asserting to make sure we were indeed correct on the sizing
-    assert(rc != 0);
+    // and within expected bounds of captures (substrings plus full match)
+    assert(rc > 0 && rc <= matcher->ca_count + 1);
 
     // TODO: expose a way to allow the caller to deal with the matches / captures
     // we can use https://www.pcre.org/original/doc/html/pcre_get_named_substring.html
@@ -170,10 +171,7 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
             continue;
         }
 
-        const char* nc_name = j == 0 ? "*FULL*" : "*NONE*";
-        if (j > 0 && j - 1 < matcher->nc_count && matcher->nc_arr[j-1]) {
-            nc_name = matcher->nc_arr[j-1];
-        }
+        const char* nc_name = j == 0 ? "*FULL*" : matcher->nc_arr[j] ? matcher->nc_arr[j] : "*NONE*";
         pcre_get_substring(str, matcher->ov_subs, rc, j, &match);
         printf("Match(%2d): (%2d,%2d): '%s' [%s]\n", j, f, t, match, nc_name);
         pcre_free_substring(match);

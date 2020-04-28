@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
         "Windows NT 11-40.g",
         "Windows 98-deprecated",
     };
-    const char* pattern = "(?:(?<os_type>Windows[ ]NT)[ ](?<os_version>[-0-9._a-zA-Z]+))|(?<os_type>Windows[ ]XP|Windows[ ]98|Win98)(-[a-zA-Z]+)?";
+    const char* pattern = "(?:(?<os_type>(Windows)[ ]NT)[ ](?<os_version>[-0-9._a-zA-Z]+))|(?<os_type>Windows[ ]XP|Windows[ ]98|Win98)(-[a-zA-Z]+)?(?<test_type>[a-z])?";
     printf("Regex to use: %s\n", pattern);
 
     Matcher* matcher = matcher_build();
