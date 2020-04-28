@@ -138,8 +138,8 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
         len = strlen(str);
     }
 
-    // FIXME: probably this is not needed since we have a fixed size per pattern
-    memset(matcher->ov_subs, 0, matcher->ov_len * sizeof(int));
+    // (re)set elements of ov_subs to -1
+    memset(matcher->ov_subs, -1, matcher->ov_len * sizeof(int));
     int rc = pcre_exec(matcher->code, matcher->extra, str, len, start, options, matcher->ov_subs, matcher->ov_len);
     // TODO: deal with these error codes
     if (rc < 0) {
