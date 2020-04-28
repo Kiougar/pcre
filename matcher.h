@@ -15,12 +15,13 @@ typedef struct Matcher {
     const char* pattern;
     pcre* code;
     pcre_extra* extra;
-    int nc_count;
-    int nc_size;
-    const char* nc_data;
-    int nc_len;
-    const char** nc_arr;
-    int* nc_subs;
+    int ca_count; // capture count
+    int nc_count; // name count
+    int nc_size; // name size
+    const char* nc_data; // nametable
+    const char** nc_arr; // name array for easier access
+    int ov_len; // output vector length
+    int* ov_subs; // output vector positions
 } Matcher;
 
 Matcher* matcher_build(void);
