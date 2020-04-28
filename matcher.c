@@ -154,6 +154,11 @@ int matcher_match(Matcher* matcher, const char* str, int len) {
         return 1;
     }
 
+    // No need to check for rc == 0 and adjust (as recommended in the man page)
+    // because we have already made sure that the output vector can fit all matches
+    // we are asserting to make sure we were indeed correct on the sizing
+    assert(rc != 0);
+
     // TODO: expose a way to allow the caller to deal with the matches / captures
     // we can use https://www.pcre.org/original/doc/html/pcre_get_named_substring.html
     const char *match;
